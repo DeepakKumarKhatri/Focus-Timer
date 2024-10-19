@@ -7,8 +7,15 @@ import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
 import { Play, Pause, RotateCcw, Maximize, Minimize, Volume2, VolumeX, Moon, Sun } from 'lucide-react'
 
+const Logo = () => (
+  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="20" cy="20" r="18" stroke="currentColor" strokeWidth="2"/>
+    <path d="M20 10V20L26 26" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+)
+
 export default function FocusTimer() {
-  const [time, setTime] = useState(25 * 60) // Default to 25 minutes
+  const [time, setTime] = useState(25 * 60)
   const [hours, setHours] = useState(0)
   const [minutes, setMinutes] = useState(25)
   const [seconds, setSeconds] = useState(0)
@@ -17,6 +24,7 @@ export default function FocusTimer() {
   const [isMuted, setIsMuted] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isFinished, setIsFinished] = useState(false)
 
   const fullscreenRef = useRef(null)
   const intervalRef = useRef(null)
@@ -43,16 +51,25 @@ export default function FocusTimer() {
   const startTimer = useCallback(() => {
     if (time > 0) {
       setIsRunning(true)
+      setIsFinished(false)
       enterFullscreen()
     }
   }, [time])
 
   const pauseTimer = () => setIsRunning(false)
-  const resumeTimer = () => setIsRunning(true)
   const resetTimer = () => {
     setIsRunning(false)
     setTime(25 * 60)
+    setIsFinished(false)
     exitFullscreen()
+  }
+
+  const toggleTimer = () => {
+    if (isRunning) {
+      pauseTimer()
+    } else {
+      startTimer()
+    }
   }
 
   const enterFullscreen = () => {
@@ -100,6 +117,7 @@ export default function FocusTimer() {
       }, 1000)
     } else if (time === 0) {
       setIsRunning(false)
+      setIsFinished(true)
       if (!isMuted) {
         const audio = new Audio('/alarm.wav')
         audio.play()
@@ -114,9 +132,22 @@ export default function FocusTimer() {
       setIsFullscreen(!!document.fullscreenElement)
     }
 
+    const handleKeyPress = (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault()
+        toggleTimer()
+      } else if (e.code === 'KeyR') {
+        resetTimer()
+      }
+    }
+
     document.addEventListener('fullscreenchange', handleFullscreenChange)
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  }, [])
+    document.addEventListener('keydown', handleKeyPress)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('keydown', handleKeyPress)
+    }
+  }, [toggleTimer])
 
   const formatTime = (seconds) => {
     const h = Math.floor(seconds / 3600)
@@ -140,17 +171,20 @@ export default function FocusTimer() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-lg shadow-lg w-full max-w-md`}
+            className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-6 md:p-8 rounded-lg shadow-lg w-full max-w-md`}
           >
-            <motion.h1 
-              className={`text-4xl font-bold mb-6 text-center ${textColor}`}
+            <motion.div 
+              className="flex items-center justify-center mb-6"
               initial={{ y: -20 }}
               animate={{ y: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
             >
-              Focus Timer
-            </motion.h1>
-            <div className="mb-8">
+              <Logo />
+              <h1 className={`text-3xl md:text-4xl font-bold ml-3 ${textColor}`}>
+                Focus Timer
+              </h1>
+            </motion.div>
+            <div className="mb-6">
               <Slider
                 min={0}
                 max={7200}
@@ -159,8 +193,8 @@ export default function FocusTimer() {
                 onValueChange={(value) => setTime(value[0])}
                 className="w-full mb-4"
               />
-              <div className={`flex justify-between items-center ${textColor}`}>
-                <div className="flex-1 mr-2">
+              <div className={`grid grid-cols-3 gap-2 ${textColor}`}>
+                <div>
                   <label htmlFor="hours" className="block text-sm font-medium mb-1">Hours</label>
                   <Input
                     type="number"
@@ -172,7 +206,7 @@ export default function FocusTimer() {
                     className={`w-full ${inputBgColor} ${inputBorderColor}`}
                   />
                 </div>
-                <div className="flex-1 mx-2">
+                <div>
                   <label htmlFor="minutes" className="block text-sm font-medium mb-1">Minutes</label>
                   <Input
                     type="number"
@@ -184,7 +218,7 @@ export default function FocusTimer() {
                     className={`w-full ${inputBgColor} ${inputBorderColor}`}
                   />
                 </div>
-                <div className="flex-1 ml-2">
+                <div>
                   <label htmlFor="seconds" className="block text-sm font-medium mb-1">Seconds</label>
                   <Input
                     type="number"
@@ -207,10 +241,10 @@ export default function FocusTimer() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <Button onClick={startTimer} size="lg" className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={startTimer} size="lg" className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-semibold py-2 px-6 rounded-full transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50">
                 Start Focus
               </Button>
-              <Button onClick={() => setIsDarkMode(!isDarkMode)} size="icon" variant="outline">
+              <Button onClick={() => setIsDarkMode(!isDarkMode)} size="icon" variant="outline" className="rounded-full">
                 {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </Button>
             </motion.div>
@@ -229,9 +263,16 @@ export default function FocusTimer() {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 260, damping: 20 }}
-              className={`text-9xl font-bold ${textColor}`}
+              className={`text-6xl md:text-9xl font-bold ${textColor} text-center`}
             >
-              {formatTime(time)}
+              {isFinished ? (
+                <div className="flex flex-col items-center">
+                  <p className="text-4xl md:text-6xl mb-4">Time's up!</p>
+                  <p className="text-xl md:text-2xl">Great job staying focused!</p>
+                </div>
+              ) : (
+                formatTime(time)
+              )}
             </motion.div>
             <AnimatePresence>
               {showControls && (
@@ -240,27 +281,21 @@ export default function FocusTimer() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 50 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  className="fixed bottom-8 transform -translate-x-1/2 flex space-x-4"
+                  className="fixed bottom-8 transform -translate-x-1/2 flex flex-wrap justify-center space-x-2"
                 >
-                  {isRunning ? (
-                    <Button onClick={pauseTimer} size="icon" variant="outline">
-                      <Pause className="h-6 w-6" />
-                    </Button>
-                  ) : (
-                    <Button onClick={resumeTimer} size="icon" variant="outline">
-                      <Play className="h-6 w-6" />
-                    </Button>
-                  )}
-                  <Button onClick={resetTimer} size="icon" variant="outline">
+                  <Button onClick={toggleTimer} size="icon" variant="outline" className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white rounded-full transition duration-300 ease-in-out transform hover:scale-105">
+                    {isRunning ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                  </Button>
+                  <Button onClick={resetTimer} size="icon" variant="outline" className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white rounded-full transition duration-300 ease-in-out transform hover:scale-105">
                     <RotateCcw className="h-6 w-6" />
                   </Button>
-                  <Button onClick={toggleFullscreen} size="icon" variant="outline">
+                  <Button onClick={toggleFullscreen} size="icon" variant="outline" className="bg-gradient-to-r from-pink-400 to-red-500 hover:from-pink-500 hover:to-red-600 text-white rounded-full transition duration-300 ease-in-out transform hover:scale-105">
                     {isFullscreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
                   </Button>
-                  <Button onClick={() => setIsMuted(!isMuted)} size="icon" variant="outline">
+                  <Button onClick={() => setIsMuted(!isMuted)} size="icon" variant="outline" className="bg-gradient-to-r from-purple-400 to-indigo-500 hover:from-purple-500 hover:to-indigo-600 text-white rounded-full transition duration-300 ease-in-out transform hover:scale-105">
                     {isMuted ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
                   </Button>
-                  <Button onClick={() => setIsDarkMode(!isDarkMode)} size="icon" variant="outline">
+                  <Button onClick={() => setIsDarkMode(!isDarkMode)} size="icon" variant="outline" className="bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white rounded-full transition duration-300 ease-in-out transform hover:scale-105">
                     {isDarkMode ? <Sun className="h-6 w-6" /> : <Moon className="h-6 w-6" />}
                   </Button>
                 </motion.div>
@@ -269,6 +304,7 @@ export default function FocusTimer() {
           </motion.div>
         )}
       </AnimatePresence>
+    
     </div>
   )
 }
