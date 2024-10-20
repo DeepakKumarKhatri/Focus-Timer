@@ -60,28 +60,42 @@ export default function FocusTimer() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('focusTimerSettings', JSON.stringify({
-      isDarkMode,
-      isMuted,
-      theme: currentTheme,
-      pomodoroMode,
-      pomodoroSettings,
-    }))
-  }, [isDarkMode, isMuted, currentTheme, pomodoroMode, pomodoroSettings])
+    const loadFromLocalStorage = () => {
+      const savedSettings = JSON.parse(localStorage.getItem('focusTimerSettings')) || {}
+      setIsDarkMode(savedSettings.isDarkMode ?? false)
+      setIsMuted(savedSettings.isMuted ?? false)
+      setCurrentTheme(savedSettings.theme ?? "default")
+      setPomodoroMode(savedSettings.pomodoroMode ?? false)
+      setPomodoroSettings(savedSettings.pomodoroSettings ?? pomodoroSettings)
+      
+      const savedPresets = JSON.parse(localStorage.getItem('focusTimerPresets'))
+      if (savedPresets) setPresets(savedPresets)
+      
+      const savedStats = JSON.parse(localStorage.getItem('focusTimerStats'))
+      if (savedStats) setStats(savedStats)
+    }
 
-  useEffect(() => {
-    localStorage.setItem('focusTimerPresets', JSON.stringify(presets))
-  }, [presets])
-
-  useEffect(() => {
-    localStorage.setItem('focusTimerStats', JSON.stringify(stats))
-  }, [stats])
-
-  useEffect(() => {
+    loadFromLocalStorage()
     if (typeof window !== 'undefined') {
       audioRef.current = new Audio("/alarm.wav")
     }
   }, [])
+
+  useEffect(() => {
+    const saveToLocalStorage = () => {
+      localStorage.setItem('focusTimerSettings', JSON.stringify({
+        isDarkMode,
+        isMuted,
+        theme: currentTheme,
+        pomodoroMode,
+        pomodoroSettings,
+      }))
+      localStorage.setItem('focusTimerPresets', JSON.stringify(presets))
+      localStorage.setItem('focusTimerStats', JSON.stringify(stats))
+    }
+
+    saveToLocalStorage()
+  }, [isDarkMode, isMuted, currentTheme, pomodoroMode, pomodoroSettings, presets, stats])
 
   const startTimer = useCallback(() => {
     if (time > 0) {
@@ -102,7 +116,6 @@ export default function FocusTimer() {
     setIsFinished(false)
     setIsBreak(false)
     setPomodoroStep(0)
-    // Remove the exitFullscreen() call from here
   }
 
   const toggleTimer = () => {
@@ -151,7 +164,6 @@ export default function FocusTimer() {
     } else {
       enterFullscreen()
     }
-    setIsFullscreen(!isFullscreen)
   }
 
   useEffect(() => {
@@ -249,11 +261,11 @@ export default function FocusTimer() {
   }
 
   const addPreset = (name, duration) => {
-    setPresets([...presets, { name, duration }])
+    setPresets(prevPresets => [...prevPresets, { name, duration }])
   }
 
   const removePreset = (name) => {
-    setPresets(presets.filter(preset => preset.name !== name))
+    setPresets(prevPresets => prevPresets.filter(preset => preset.name !== name))
   }
 
   return (
